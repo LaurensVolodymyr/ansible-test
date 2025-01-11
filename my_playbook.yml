@@ -1,0 +1,9 @@
+---
+- name: Deploy node-exporter, Prometheus, Grafana and Nginx
+  hosts: all
+  become: yes
+  roles:
+    - node_exporter
+    - prometheus
+    - grafana
+    - nginx

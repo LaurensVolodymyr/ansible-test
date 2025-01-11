@@ -1,0 +1,41 @@
+---
+- name: Install dependencies
+  apt:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - adduser
+    - libfontconfig1
+
+- name: Download Grafana
+  get_url:
+    url: https://dl.grafana.com/oss/release/grafana-8.4.3.linux-amd64.tar.gz
+    dest: /tmp/grafana-8.4.3.linux-amd64.tar.gz
+
+- name: Extract Grafana
+  unarchive:
+    src: /tmp/grafana-8.4.3.linux-amd64.tar.gz
+    dest: /opt/
+    creates: /opt/grafana-8.4.3
+
+- name: Create systemd service
+  copy:
+    dest: /etc/systemd/system/grafana.service
+    content: |
+      [Unit]
+      Description=Grafana
+      After=network.target
+
+      [Service]
+      ExecStart=/opt/grafana-8.4.3/bin/grafana-server --config=/opt/grafana-8.4.3/conf/defaults.ini --homepath=/opt/grafana-8.4.3
+      Restart=always
+      User=root
+
+      [Install]
+      WantedBy=multi-user.target
+
+- name: Enable and start Grafana service
+  systemd:
+    name: grafana
+    enabled: yes
+    state: started

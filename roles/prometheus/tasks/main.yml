@@ -1,0 +1,35 @@
+---
+- name: Download Prometheus archive
+  get_url:
+    url: https://github.com/prometheus/prometheus/releases/download/v2.31.1/prometheus-2.31.1.linux-amd64.tar.gz
+    dest: /tmp/prometheus.tar.gz
+
+- name: Extract Prometheus archive
+  unarchive:
+    src: /tmp/prometheus.tar.gz
+    dest: /usr/local/bin/prometheus
+    remote_src: yes
+
+- name: Copy Prometheus config file
+  copy:
+    src: files/prometheus.yml
+    dest: /usr/local/bin/prometheus/prometheus.yml
+
+- name: Create systemd service for Prometheus
+  copy:
+    src: files/prometheus.service
+    dest: /etc/systemd/system/prometheus.service
+    mode: 0644
+
+- name: Start Prometheus service
+  systemd:
+    name: prometheus
+    state: started
+    enabled: yes
+
+- name: Restart Prometheus service if configuration changed
+  systemd:
+    name: prometheus
+    state: restarted
+    daemon_reload: yes
+

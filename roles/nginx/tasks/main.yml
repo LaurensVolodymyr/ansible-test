@@ -1,0 +1,62 @@
+---
+- name: Install Nginx
+  apt:
+    name: nginx
+    state: present
+
+- name: Create SSL directory
+  file:
+    path: /etc/nginx/ssl
+    state: directory
+    mode: '0755'
+
+- name: Create self-signed SSL certificate
+  command: openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/nginx/ssl/grafana.key -out /etc/nginx/ssl/grafana.crt
+  args:
+    creates: /etc/nginx/ssl/grafana.key
+
+- name: Configure Nginx for Grafana
+  copy:
+    dest: /etc/nginx/sites-available/grafana
+    content: |
+      server {
+          listen 80;
+          server_name grafana.example.com;
+          return 301 https://$host$request_uri;
+      }
+
+      server {
+          listen 443 ssl;
+          server_name grafana.example.com;
+
+          ssl_certificate /etc/nginx/ssl/grafana.crt;
+          ssl_certificate_key /etc/nginx/ssl/grafana.key;
+
+          location / {
+              proxy_pass http://localhost:3000;
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $scheme;
+          }
+      }
+  notify: reload nginx
+
+- name: Enable Grafana site in Nginx
+  file:
+    src: /etc/nginx/sites-available/grafana
+    dest: /etc/nginx/sites-enabled/grafana
+    state: link
+
+- name: Add entry to /etc/hosts
+  lineinfile:
+    path: /etc/hosts
+    line: "127.0.0.1 grafana.example.com"
+    create: yes
+    state: present
+
+- name: Restart Nginx
+  service:
+    name: nginx
+    state: restarted
+    enabled: yes
